@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+
+GCLOUD_BASE_CONF_STORE=~/.config/gcloud/
+CRED_FILES=''
+CRED_NAMES=''
+GOOGLE_APPLICATION_CREDENTIALS=''
+BASH_PATH=$(which bash)
+
+getent(){
+  CRED_FILES=$(ls $GCLOUD_BASE_CONF_STORE/application_default_credentials.json_*)
+  CRED_NAMES=$(echo $CRED_FILES | sed -e s:$GCLOUD_BASE_CONF_STORE/application_default_credentials\.json_::g)
+} 
+getent
+
+errquit(){
+  MSG=$1
+  echo "$MSG"
+  exit 1
+}
+
+if [ -z "$CRED_FILES" ] ; then
+  errquit "file not found: $GCLOUD_BASE_CONF_STORE/application_default_credentials.json_*. quit."
+fi
+
+exist_check(){
+  CHECK_FILE=$1
+  if [ ! -f $CHECK_FILE ] ; then
+    errquit "File not found. quit."
+  fi
+}
+
+set_env_and_exec_bash(){
+  REQ=$1
+  CRED_JSON_PATH=$GCLOUD_BASE_CONF_STORE/application_default_credentials.json_${REQ}
+  exist_check "$CRED_JSON_PATH"
+  export GOOGLE_APPLICATION_CREDENTIALS=$CRED_JSON_PATH
+  exec "$BASH_PATH"
+}
+
+if [ $# -eq 0 ] ; then
+  echo $CRED_NAMES
+else
+  case $1 in
+  s)
+    REQ=$2
+    set_env_and_exec_bash $REQ
+  ;;
+  *)
+    :
+  ;;
+  esac
+fi
+
