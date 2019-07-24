@@ -3,8 +3,14 @@
 GCLOUD_BASE_CONF_STORE=~/.config/gcloud/
 CRED_FILES=''
 CRED_NAMES=''
-GOOGLE_APPLICATION_CREDENTIALS=''
+#GOOGLE_APPLICATION_CREDENTIALS=''
 BASH_PATH=$(which bash)
+
+usage(){
+  echo "$0: gcloud Application Default Credentials(ADCs) manipulator."
+  echo ""
+  exit 0
+}
 
 getent(){
   CRED_FILES=$(ls $GCLOUD_BASE_CONF_STORE/application_default_credentials.json_*)
@@ -16,6 +22,20 @@ errquit(){
   MSG=$1
   echo "$MSG"
   exit 1
+}
+
+getactive(){
+  GENV="$(env | grep GOOGLE_APPLICATION_CREDENTIALS )"
+  if [ -z "$GENV" ] ; then
+    BASE_CRED_FILE=$GCLOUD_BASE_CONF_STORE/application_default_credentials.json
+    if [ ! -f "$BASE_CRED_FILE" ] ; then
+      errquit "ADC not set yet. please set that. quit."
+    else
+      cat $BASE_CRED_FILE
+    fi
+  else
+    echo $GENV
+  fi
 }
 
 if [ -z "$CRED_FILES" ] ; then
@@ -38,12 +58,18 @@ set_env_and_exec_bash(){
 }
 
 if [ $# -eq 0 ] ; then
-  echo $CRED_NAMES
+  getactive
 else
   case $1 in
   s)
     REQ=$2
     set_env_and_exec_bash $REQ
+  ;;
+  l)
+    echo $CRED_NAMES
+  ;;
+  h)
+    usage
   ;;
   *)
     :
