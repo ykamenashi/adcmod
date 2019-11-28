@@ -5,7 +5,7 @@
 * mutiple Google Cloud SDK: Application-Default-Credentials(ADC-profiles) switcher.
 
 1. set `GOOGLE_APPLICATION_CREDENTIALS`  environment variable
-1. exec bash
+1. exec `$SHELL`
 
 ### Why need this
 
@@ -20,6 +20,12 @@
 
 ## how to use
 
+* To use the shell, is NOT congigured to login shell, follow this:
+
+``````
+$ env SHELL=path/to/your/favorite-shell adcmod s PROFILE-NAME
+``````
+
 ### `adcmod`
 
 * show currently active ADC(application default credential).
@@ -33,14 +39,14 @@
 
 ## `adcmod s PROFILE-NAME`
 
-* set env, and exec bash
+* set env, and exec `$SHELL`
 
 ## how to set up
 
 ### install `adcmod`
 
 1. clone this repo.
-1. make symlink for `adcmod` at your $PATH.
+1. make symlink for `adcmod` at your `$PATH`.
 
 ### register your ADCs
 
