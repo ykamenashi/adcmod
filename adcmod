@@ -1,79 +1,76 @@
-#!/usr/bin/env bash
+#!/usr/bin/env python3
+import os
+import sys
+import glob
+import subprocess
 
-GCLOUD_BASE_CONF_STORE=~/.config/gcloud/
-CRED_FILES=''
-CRED_NAMES=''
-#GOOGLE_APPLICATION_CREDENTIALS=''
-#BASH_PATH=$(which bash)
+GCLOUD_BASE_CONF_STORE = os.path.expanduser("~/.config/gcloud")
 
-usage(){
-  echo "$0: gcloud Application Default Credentials(ADCs) manipulator."
-  echo ""
-  exit 0
-}
+def get_cred_names():
+    pattern = os.path.join(GCLOUD_BASE_CONF_STORE, "application_default_credentials.json_*")
+    files = glob.glob(pattern)
+    names = [os.path.basename(f).replace("application_default_credentials.json_", "") for f in files]
+    return names, files
 
-getent(){
-  CRED_FILES=$(ls $GCLOUD_BASE_CONF_STORE/application_default_credentials.json_*)
-  CRED_NAMES=$(echo $CRED_FILES | sed -e s:$GCLOUD_BASE_CONF_STORE/application_default_credentials\.json_::g)
-} 
-getent
+def err_quit(msg):
+    print(msg, file=sys.stderr)
+    sys.exit(1)
 
-errquit(){
-  MSG=$1
-  echo "$MSG"
-  exit 1
-}
+def usage():
+    print(f"{sys.argv[0]}: gcloud Application Default Credentials(ADCs) manipulator.")
+    print("")
+    print("Usage:")
+    print(f"  {sys.argv[0]} [command] [arg]")
+    print("")
+    print("Commands:")
+    print("  (no args)  Show active ADC path or environment variable")
+    print("  l          List available ADCs")
+    print("  s [name]   Set GOOGLE_APPLICATION_CREDENTIALS and start a new shell")
+    print("  h          Show this help")
+    sys.exit(0)
 
-getactive(){
-  GENV="$(env | grep GOOGLE_APPLICATION_CREDENTIALS )"
-  if [ -z "$GENV" ] ; then
-    BASE_CRED_FILE=$GCLOUD_BASE_CONF_STORE/application_default_credentials.json
-    if [ ! -f "$BASE_CRED_FILE" ] ; then
-      errquit "ADC not set yet. please set that. quit."
-    else
-      cat $BASE_CRED_FILE
-    fi
-  else
-    echo $GENV
-  fi
-}
+def get_active():
+    genv = os.environ.get("GOOGLE_APPLICATION_CREDENTIALS")
+    if genv:
+        print(f"GOOGLE_APPLICATION_CREDENTIALS={genv}")
+    else:
+        base_cred_file = os.path.join(GCLOUD_BASE_CONF_STORE, "application_default_credentials.json")
+        if not os.path.exists(base_cred_file):
+            err_quit("ADC not set yet. please set that. quit.")
+        else:
+            # 既存のbash版は cat していたが、名前を表示するだけの方が使いやすいかもしれない
+            # ただし互換性のために中身を出力する振る舞いを維持するなら:
+            with open(base_cred_file, 'r') as f:
+                print(f.read())
 
-if [ -z "$CRED_FILES" ] ; then
-  errquit "file not found: $GCLOUD_BASE_CONF_STORE/application_default_credentials.json_*. quit."
-fi
+def set_env_and_exec_shell(name):
+    cred_json_path = os.path.join(GCLOUD_BASE_CONF_STORE, f"application_default_credentials.json_{name}")
+    if not os.path.exists(cred_json_path):
+        err_quit(f"File not found: {cred_json_path}. quit.")
+    
+    os.environ["GOOGLE_APPLICATION_CREDENTIALS"] = cred_json_path
+    shell = os.environ.get("SHELL", "/bin/bash")
+    os.execl(shell, shell)
 
-exist_check(){
-  CHECK_FILE=$1
-  if [ ! -f $CHECK_FILE ] ; then
-    errquit "File not found. quit."
-  fi
-}
+def main():
+    names, files = get_cred_names()
+    
+    if len(sys.argv) == 1:
+        get_active()
+        return
 
-set_env_and_exec_bash(){
-  REQ=$1
-  CRED_JSON_PATH=$GCLOUD_BASE_CONF_STORE/application_default_credentials.json_${REQ}
-  exist_check "$CRED_JSON_PATH"
-  export GOOGLE_APPLICATION_CREDENTIALS=$CRED_JSON_PATH
-  exec "$SHELL"
-}
+    cmd = sys.argv[1]
+    if cmd == 'l':
+        print(" ".join(names))
+    elif cmd == 's':
+        if len(sys.argv) < 3:
+            err_quit("ADC name is required for 's' command.")
+        set_env_and_exec_shell(sys.argv[2])
+    elif cmd == 'h':
+        usage()
+    else:
+        # 他の引数が指定された場合の挙動はbash版に合わせて何もしないか、usageを表示
+        pass
 
-if [ $# -eq 0 ] ; then
-  getactive
-else
-  case $1 in
-  s)
-    REQ=$2
-    set_env_and_exec_bash $REQ
-  ;;
-  l)
-    echo $CRED_NAMES
-  ;;
-  h)
-    usage
-  ;;
-  *)
-    :
-  ;;
-  esac
-fi
-
+if __name__ == "__main__":
+    main()
